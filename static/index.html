@@ -1,0 +1,485 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI SRE Agent</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: #212121;
+            color: #ececec;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* Header */
+        .header {
+            padding: 12px 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-bottom: 1px solid #3a3a3a;
+            background: #212121;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .header h1 {
+            font-size: 16px;
+            font-weight: 500;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .header h1 span {
+            font-size: 18px;
+        }
+
+        /* Chat Container */
+        .chat-container {
+            flex: 1;
+            overflow-y: auto;
+            padding-bottom: 140px;
+        }
+
+        .message-wrapper {
+            padding: 24px 0;
+            border-bottom: 1px solid #3a3a3a;
+        }
+
+        .message-wrapper.user {
+            background: #212121;
+        }
+
+        .message-wrapper.ai {
+            background: #2a2a2a;
+        }
+
+        .message {
+            max-width: 768px;
+            margin: 0 auto;
+            padding: 0 24px;
+            display: flex;
+            gap: 16px;
+        }
+
+        .avatar {
+            width: 32px;
+            height: 32px;
+            border-radius: 4px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 16px;
+            flex-shrink: 0;
+        }
+
+        .avatar.ai {
+            background: #10a37f;
+        }
+
+        .avatar.user {
+            background: #6366f1;
+        }
+
+        .message-content {
+            flex: 1;
+            line-height: 1.7;
+            font-size: 15px;
+        }
+
+        .message-content p {
+            margin-bottom: 12px;
+        }
+
+        .message-content p:last-child {
+            margin-bottom: 0;
+        }
+
+        .message-content code {
+            background: #1a1a1a;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-family: 'SF Mono', Monaco, monospace;
+            font-size: 13px;
+        }
+
+        .message-content pre {
+            background: #1a1a1a;
+            border-radius: 8px;
+            padding: 16px;
+            margin: 12px 0;
+            overflow-x: auto;
+            font-family: 'SF Mono', Monaco, monospace;
+            font-size: 13px;
+            line-height: 1.5;
+        }
+
+        .action-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            background: rgba(16, 163, 127, 0.15);
+            color: #10a37f;
+            padding: 6px 12px;
+            border-radius: 6px;
+            font-size: 13px;
+            margin-bottom: 12px;
+        }
+
+        /* Input Area */
+        .input-area {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            padding: 20px;
+            background: linear-gradient(transparent, #212121 20%);
+        }
+
+        .input-container {
+            max-width: 768px;
+            margin: 0 auto;
+        }
+
+        .input-wrapper {
+            display: flex;
+            align-items: center;
+            background: #3a3a3a;
+            border-radius: 12px;
+            padding: 12px 16px;
+            border: 1px solid #4a4a4a;
+            transition: border-color 0.2s;
+        }
+
+        .input-wrapper:focus-within {
+            border-color: #10a37f;
+        }
+
+        .input-wrapper textarea {
+            flex: 1;
+            background: transparent;
+            border: none;
+            color: #ececec;
+            font-size: 15px;
+            font-family: inherit;
+            resize: none;
+            outline: none;
+            max-height: 200px;
+            line-height: 1.5;
+        }
+
+        .input-wrapper textarea::placeholder {
+            color: #8e8e8e;
+        }
+
+        .send-btn {
+            background: #10a37f;
+            border: none;
+            border-radius: 8px;
+            width: 36px;
+            height: 36px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: opacity 0.2s;
+            margin-left: 12px;
+        }
+
+        .send-btn:hover {
+            opacity: 0.8;
+        }
+
+        .send-btn:disabled {
+            opacity: 0.3;
+            cursor: not-allowed;
+        }
+
+        .send-btn svg {
+            width: 18px;
+            height: 18px;
+            fill: white;
+        }
+
+        .quick-actions {
+            display: flex;
+            gap: 8px;
+            margin-top: 12px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        .quick-btn {
+            background: transparent;
+            border: 1px solid #4a4a4a;
+            border-radius: 20px;
+            padding: 8px 16px;
+            color: #b4b4b4;
+            font-size: 13px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .quick-btn:hover {
+            border-color: #10a37f;
+            color: #ececec;
+        }
+
+        .footer-text {
+            text-align: center;
+            font-size: 12px;
+            color: #6e6e6e;
+            margin-top: 12px;
+        }
+
+        /* Typing Indicator */
+        .typing-indicator {
+            display: flex;
+            gap: 4px;
+            padding: 8px 0;
+        }
+
+        .typing-indicator span {
+            width: 8px;
+            height: 8px;
+            background: #6e6e6e;
+            border-radius: 50%;
+            animation: pulse 1.4s infinite ease-in-out both;
+        }
+
+        .typing-indicator span:nth-child(1) { animation-delay: -0.32s; }
+        .typing-indicator span:nth-child(2) { animation-delay: -0.16s; }
+
+        @keyframes pulse {
+            0%, 80%, 100% { transform: scale(0.6); opacity: 0.4; }
+            40% { transform: scale(1); opacity: 1; }
+        }
+
+        /* Welcome Screen */
+        .welcome {
+            max-width: 600px;
+            margin: 80px auto;
+            text-align: center;
+            padding: 0 24px;
+        }
+
+        .welcome h2 {
+            font-size: 28px;
+            font-weight: 600;
+            margin-bottom: 16px;
+        }
+
+        .welcome p {
+            color: #8e8e8e;
+            font-size: 15px;
+            line-height: 1.6;
+        }
+
+        .capabilities {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 12px;
+            margin-top: 32px;
+        }
+
+        .capability {
+            background: #2a2a2a;
+            border-radius: 12px;
+            padding: 16px;
+            text-align: left;
+        }
+
+        .capability h3 {
+            font-size: 14px;
+            font-weight: 500;
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .capability p {
+            font-size: 13px;
+            color: #8e8e8e;
+        }
+
+        /* Scrollbar */
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #4a4a4a; border-radius: 4px; }
+    </style>
+</head>
+<body>
+    <header class="header">
+        <h1><span>🤖</span> AI SRE Agent</h1>
+    </header>
+
+    <div class="chat-container" id="chat-container">
+        <div class="welcome" id="welcome">
+            <h2>How can I help you today?</h2>
+            <p>I can monitor your Kubernetes cluster, fix problems, and answer questions about your infrastructure.</p>
+            <div class="capabilities">
+                <div class="capability">
+                    <h3>🔍 Monitor</h3>
+                    <p>Check cluster health, pod status, and namespaces</p>
+                </div>
+                <div class="capability">
+                    <h3>🔧 Fix Issues</h3>
+                    <p>Delete stuck pods, restart deployments</p>
+                </div>
+                <div class="capability">
+                    <h3>📊 Analyze</h3>
+                    <p>Review incidents and past actions</p>
+                </div>
+                <div class="capability">
+                    <h3>⚡ Scale</h3>
+                    <p>Scale deployments up or down</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="input-area">
+        <div class="input-container">
+            <div class="input-wrapper">
+                <textarea id="message-input" placeholder="Message AI SRE..." rows="1" 
+                    onkeydown="handleKeyDown(event)"></textarea>
+                <button class="send-btn" onclick="sendMessage()" id="send-btn">
+                    <svg viewBox="0 0 24 24"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>
+                </button>
+            </div>
+            <div class="quick-actions" id="quick-actions">
+                <button class="quick-btn" onclick="quickAsk('What is the cluster health?')">Cluster health</button>
+                <button class="quick-btn" onclick="quickAsk('List all namespaces')">List namespaces</button>
+                <button class="quick-btn" onclick="quickAsk('Any problem pods?')">Problem pods</button>
+            </div>
+            <p class="footer-text">Connected to Kubernetes • Groq AI</p>
+        </div>
+    </div>
+
+    <script>
+        const API_URL = 'http://localhost:5000';
+        const SESSION_ID = 'session_' + Math.random().toString(36).substr(2, 9);
+        let hasMessages = false;
+
+        function handleKeyDown(e) {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                sendMessage();
+            }
+        }
+
+        async function sendMessage() {
+            const input = document.getElementById('message-input');
+            const message = input.value.trim();
+            if (!message) return;
+
+            // Hide welcome and quick actions on first message
+            if (!hasMessages) {
+                document.getElementById('welcome').style.display = 'none';
+                document.getElementById('quick-actions').style.display = 'none';
+                hasMessages = true;
+            }
+
+            input.value = '';
+            input.style.height = 'auto';
+            addMessage(message, 'user');
+            showTyping();
+
+            try {
+                const response = await fetch(`${API_URL}/ask`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ question: message, session_id: SESSION_ID })
+                });
+                const data = await response.json();
+                hideTyping();
+                addMessage(data.answer, 'ai', data.action_taken);
+            } catch (e) {
+                hideTyping();
+                addMessage('Sorry, I could not connect to the agent. Is it running?', 'ai');
+            }
+        }
+
+        function quickAsk(question) {
+            document.getElementById('message-input').value = question;
+            sendMessage();
+        }
+
+        function addMessage(content, type, actionTaken = null) {
+            const container = document.getElementById('chat-container');
+            const wrapper = document.createElement('div');
+            wrapper.className = `message-wrapper ${type}`;
+
+            const avatar = type === 'ai' ? '🤖' : '👤';
+            const avatarClass = type === 'ai' ? 'ai' : 'user';
+            
+            let actionBadge = '';
+            if (actionTaken) {
+                actionBadge = '<div class="action-badge">⚡ Action executed</div>';
+            }
+
+            // Format content with line breaks and code
+            let formattedContent = content
+                .replace(/\n/g, '<br>')
+                .replace(/`([^`]+)`/g, '<code>$1</code>');
+
+            wrapper.innerHTML = `
+                <div class="message">
+                    <div class="avatar ${avatarClass}">${avatar}</div>
+                    <div class="message-content">
+                        ${actionBadge}
+                        <p>${formattedContent}</p>
+                    </div>
+                </div>
+            `;
+            container.appendChild(wrapper);
+            container.scrollTop = container.scrollHeight;
+        }
+
+        let typingWrapper = null;
+        function showTyping() {
+            const container = document.getElementById('chat-container');
+            typingWrapper = document.createElement('div');
+            typingWrapper.className = 'message-wrapper ai';
+            typingWrapper.innerHTML = `
+                <div class="message">
+                    <div class="avatar ai">🤖</div>
+                    <div class="message-content">
+                        <div class="typing-indicator">
+                            <span></span><span></span><span></span>
+                        </div>
+                    </div>
+                </div>
+            `;
+            container.appendChild(typingWrapper);
+            container.scrollTop = container.scrollHeight;
+        }
+
+        function hideTyping() {
+            if (typingWrapper) {
+                typingWrapper.remove();
+                typingWrapper = null;
+            }
+        }
+
+        // Auto-resize textarea
+        document.getElementById('message-input').addEventListener('input', function() {
+            this.style.height = 'auto';
+            this.style.height = Math.min(this.scrollHeight, 200) + 'px';
+        });
+    </script>
+</body>
+</html>

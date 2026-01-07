@@ -1,0 +1,79 @@
+apiVersion: monitoring.coreos.com/v1alpha1
+kind: AlertmanagerConfig
+metadata:
+  name: ai-sre-webhook
+  namespace: monitoring
+  labels:
+    alertmanagerConfig: ai-sre
+spec:
+  route:
+    receiver: ai-sre-agent
+    groupBy: ["alertname", "namespace"]
+    groupWait: 10s
+    groupInterval: 5m
+    repeatInterval: 1h
+    matchers:
+      - name: namespace
+        value: ai-sre
+        matchType: "="
+  receivers:
+    - name: ai-sre-agent
+      webhookConfigs:
+        - url: "http://ai-sre-agent.ai-sre.svc.cluster.local:5000/webhook"
+          sendResolved: true
+---
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: ai-sre-alerts
+  namespace: monitoring
+  labels:
+    prometheus: k8s
+    role: alert-rules
+spec:
+  groups:
+    - name: ai-sre-target
+      rules:
+        - alert: PodCrashLooping
+          expr: |
+            rate(kube_pod_container_status_restarts_total{namespace="ai-sre"}[15m]) > 0
+          for: 1m
+          labels:
+            severity: critical
+            namespace: ai-sre
+          annotations:
+            summary: "Pod {{ $labels.pod }} is crash looping"
+            description: "Pod {{ $labels.pod }} has been restarting frequently"
+
+        - alert: PodNotReady
+          expr: |
+            kube_pod_status_ready{namespace="ai-sre", condition="true"} == 0
+          for: 2m
+          labels:
+            severity: warning
+            namespace: ai-sre
+          annotations:
+            summary: "Pod {{ $labels.pod }} is not ready"
+            description: "Pod {{ $labels.pod }} has been not ready for 2 minutes"
+
+        - alert: HighCPUUsage
+          expr: |
+            (sum(rate(container_cpu_usage_seconds_total{namespace="ai-sre"}[5m])) by (pod) 
+            / sum(kube_pod_container_resource_limits{namespace="ai-sre", resource="cpu"}) by (pod)) > 0.8
+          for: 2m
+          labels:
+            severity: warning
+            namespace: ai-sre
+          annotations:
+            summary: "High CPU usage on {{ $labels.pod }}"
+            description: "Pod {{ $labels.pod }} CPU usage is above 80%"
+
+        - alert: ContainerOOMKilled
+          expr: |
+            kube_pod_container_status_last_terminated_reason{namespace="ai-sre", reason="OOMKilled"} == 1
+          labels:
+            severity: critical
+            namespace: ai-sre
+          annotations:
+            summary: "Container {{ $labels.container }} OOMKilled"
+            description: "Container {{ $labels.container }} in pod {{ $labels.pod }} was OOMKilled"

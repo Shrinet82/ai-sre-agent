@@ -1,0 +1,49 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: ai-sre
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ai-sre-target
+  namespace: ai-sre
+  labels:
+    app: ai-sre-target
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: ai-sre-target
+  template:
+    metadata:
+      labels:
+        app: ai-sre-target
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "80"
+    spec:
+      containers:
+        - name: nginx
+          image: nginx:latest
+          ports:
+            - containerPort: 80
+          resources:
+            limits:
+              cpu: "50m"
+              memory: "64Mi"
+            requests:
+              cpu: "25m"
+              memory: "32Mi"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: ai-sre-target
+  namespace: ai-sre
+spec:
+  selector:
+    app: ai-sre-target
+  ports:
+    - port: 80
+      targetPort: 80

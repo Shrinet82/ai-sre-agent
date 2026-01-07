@@ -1,0 +1,101 @@
+# =============================================================================
+# AI SRE Agent - .gitignore
+# =============================================================================
+
+# ----- Sensitive Data (CRITICAL) -----
+# Environment variables with API keys
+.env
+*.env
+src/.env
+.env.local
+.env.production
+
+# Database files with incident history
+*.db
+incidents.db
+src/incidents.db
+
+# Kubernetes config (contains cluster credentials)
+kubeconfig
+.kube/
+
+# ----- Python -----
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+venv/
+ENV/
+.venv/
+
+# ----- IDE -----
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.project
+.pydevproject
+.settings/
+
+# ----- Logs -----
+*.log
+server.log
+logs/
+
+# ----- ML Models -----
+*.pkl
+*.joblib
+anomaly_model.pkl
+
+# ----- OS Files -----
+.DS_Store
+Thumbs.db
+*.bak
+*.tmp
+
+# ----- Docker -----
+.docker/
+
+# ----- Test artifacts -----
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+
+# ----- Temporary files -----
+tmp/
+temp/
+*.tmp
+*.temp
+
+# ----- Secrets -----
+secrets/
+*.pem
+*.key
+*.crt
+*_secret*
+*_credentials*
+
+# ----- Node (if any frontend build) -----
+node_modules/
+npm-debug.log
+
+# ----- Recordings and screenshots (optional - comment out if want to include) -----
+# docs/screenshots/*.webp
