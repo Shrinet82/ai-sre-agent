@@ -563,24 +563,16 @@ send_notification: Email sent
 ## 🔄 Decision Flow Diagram
 
 ```mermaid
-flowchart TD
-    A[🚨 Alert Received] --> B[🤖 AI Analysis<br/>Groq LLM]
-
-    B --> C{Confidence<br/>Check}
-
-    C -->|≥ 0.8| D[✅ AUTO EXECUTE<br/>Test 3, Test 4]
-    C -->|< 0.8| E[🔒 PENDING APPROVAL<br/>Test 5]
-
-    E --> F[Human Approves<br/>POST /approve/0]
-
-    D --> G[⚡ EXECUTE<br/>K8s Action]
+graph TD
+    A[Alert] --> B[AI Analysis]
+    B --> C{Confidence >= 0.8?}
+    C -->|Yes| D[Auto Execute]
+    C -->|No| E[Pending Approval]
+    E --> F[Human Approves]
+    D --> G[Execute Action]
     F --> G
-
-    G --> H[🔍 VERIFY<br/>Check pods healthy]
-
-    H --> I[📧 NOTIFY<br/>Email sent]
-
-    I --> J[📊 LOG<br/>SQLite + Qdrant]
+    G --> H[Verify]
+    H --> I[Notify + Log]
 ```
 
 ---

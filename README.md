@@ -58,37 +58,18 @@ flowchart LR
 ### High-Level Overview
 
 ```mermaid
-flowchart TB
-    subgraph LOCAL["💻 YOUR LOCAL MACHINE"]
-        subgraph AGENT["AI SRE Agent - Flask Server :5000"]
-            EP1["/ - Chat UI"]
-            EP2["/ask - Chat API"]
-            EP3["/webhook - Alerts"]
-            EP4["/health - Status"]
-        end
+graph TD
+    A[🖥️ AI SRE Agent<br/>localhost:5000] --> B[🤖 Groq AI]
+    A --> C[📊 SQLite DB]
+    A --> D[📧 Email]
+    A --> E[☸️ Kubernetes]
 
-        AGENT --> GROQ["🤖 Groq API<br/>llama-3.3-70b"]
-        AGENT --> SQLITE["📊 SQLite<br/>Incident History"]
-        AGENT --> GMAIL["📧 Gmail SMTP"]
-    end
+    E --> F[ai-sre<br/>Target App]
+    E --> G[monitoring<br/>Prometheus]
+    E --> H[qdrant<br/>Vector DB]
 
-    LOCAL -->|~/.kube/config| K8S
-
-    subgraph K8S["☸️ KUBERNETES CLUSTER"]
-        subgraph NS1["ai-sre namespace"]
-            APP["Target App<br/>(monitored)"]
-        end
-        subgraph NS2["monitoring namespace"]
-            PROM["Prometheus"]
-            GRAF["Grafana"]
-        end
-        subgraph NS3["qdrant namespace"]
-            QDRANT["Vector DB<br/>(RAG)"]
-        end
-    end
-
-    PROM -->|alerts| EP3
-    AGENT --> QDRANT
+    G -->|alerts| A
+    A <--> H
 ```
 
 ### Data Flow Diagram
@@ -132,86 +113,57 @@ sequenceDiagram
 ### Low-Level: Internal Components
 
 ```mermaid
-block-beta
-    columns 3
-
-    block:SERVER["🌐 FLASK SERVER"]:1
-        columns 1
-        EP1["app = Flask()"]
-        EP2["/webhook"]
-        EP3["/ask"]
-        EP4["/health"]
+graph LR
+    subgraph Server[Flask Server]
+        W[/webhook]
+        A[/ask]
+        H[/health]
     end
 
-    block:AI["🤖 AI INTEGRATION"]:1
-        columns 1
-        AI1["get_groq()"]
-        AI2["analyze_alert()"]
-        AI3["TOOLS list"]
+    subgraph AI[AI Layer]
+        G[Groq API]
+        T[Tool Calls]
     end
 
-    block:K8S["☸️ K8S ACTIONS"]:1
-        columns 1
-        K1["restart()"]
-        K2["scale()"]
-        K3["delete_pod()"]
-        K4["get_logs()"]
+    subgraph Actions[K8s Actions]
+        R[restart]
+        S[scale]
+        D[delete]
     end
 
-    space:3
-
-    block:DB["📊 DATABASE"]:1
-        columns 1
-        DB1["SQLite"]
-        DB2["incidents.db"]
+    subgraph Storage[Storage]
+        DB[(SQLite)]
+        V[(Qdrant)]
     end
 
-    block:SAFETY["🛡️ SAFETY LAYER"]:1
-        columns 1
-        S1["confidence ≥ 0.8"]
-        S2["risk levels"]
-        S3["approval gates"]
-    end
-
-    block:NOTIFY["📧 NOTIFICATIONS"]:1
-        columns 1
-        N1["send_email()"]
-        N2["Gmail SMTP"]
-    end
+    W --> G --> T --> R & S & D
+    A --> G
+    R & S & D --> DB
+    DB --> V
 ```
 
 ### Low-Level: Code Structure
 
 ```mermaid
-flowchart TD
-    subgraph ENTRY["📥 ENTRY POINTS"]
-        E1["/webhook<br/>alerts"]
-        E2["/ask<br/>chat"]
-        E3["/trigger-test<br/>testing"]
-    end
+graph TD
+    W[/webhook] --> P[parse_alert]
+    A[/ask] --> Q[ask_agent]
+    T[/trigger-test] --> G
 
-    E1 --> PA["parse_alert()<br/>• Extract pod<br/>• Get namespace<br/>• Get severity"]
-    E2 --> AA["ask_agent()<br/>• Get history<br/>• Build prompt"]
+    P --> G[get_groq]
+    Q --> G
 
-    PA --> GROQ
-    AA --> GROQ
-    E3 --> GROQ
+    G --> R[restart_deployment]
+    G --> S[scale_deployment]
+    G --> D[delete_pod]
 
-    GROQ["get_groq()<br/>• Init client<br/>• API call<br/>• Parse tools"]
+    R --> V[verify]
+    S --> V
+    D --> V
 
-    GROQ --> A1["restart_deployment()<br/>K8s API"]
-    GROQ --> A2["scale_deployment()<br/>K8s API"]
-    GROQ --> A3["delete_pod()<br/>K8s API"]
-
-    A1 --> VERIFY
-    A2 --> VERIFY
-    A3 --> VERIFY
-
-    VERIFY["verify()<br/>• Wait 30s<br/>• Check pods<br/>• Return bool"]
-
-    VERIFY --> LOG["log_incident()<br/>SQLite"]
-    VERIFY --> VEC["store_vector()<br/>Qdrant"]
-    VERIFY --> EMAIL["send_email()<br/>Gmail"]
+    V --> L[(log_incident)]
+    V --> Q2[(store_vector)]
+    V --> E[send_email]
 ```
 
 ### Low-Level: Database Schema
@@ -588,18 +540,11 @@ curl http://localhost:5000/health
 ### Deployment Architecture
 
 ```mermaid
-flowchart TB
-    subgraph K8S["☸️ KUBERNETES CLUSTER"]
-        subgraph MON["monitoring namespace"]
-            PROM["📊 Prometheus"] -->|alerts| AM["🔔 AlertManager"]
-        end
-
-        AM -->|webhook| AGENT
-
-        subgraph AISRE["ai-sre namespace"]
-            AGENT["🤖 AI SRE Agent Pod<br/>• Receives /webhook<br/>• Analyzes with Groq AI<br/>• Executes K8s actions<br/>• Sends notifications"]
-        end
-    end
+graph LR
+    P[Prometheus] --> AM[AlertManager]
+    AM -->|webhook| A[AI SRE Agent]
+    A --> K8s[Kubernetes API]
+    A --> E[Email]
 ```
 
 ---
