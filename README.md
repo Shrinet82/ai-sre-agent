@@ -115,9 +115,9 @@ sequenceDiagram
 ```mermaid
 graph LR
     subgraph Server[Flask Server]
-        W[/webhook]
-        A[/ask]
-        H[/health]
+        W[webhook]
+        A[ask]
+        H[health]
     end
 
     subgraph AI[AI Layer]
@@ -146,9 +146,9 @@ graph LR
 
 ```mermaid
 graph TD
-    W[/webhook] --> P[parse_alert]
-    A[/ask] --> Q[ask_agent]
-    T[/trigger-test] --> G
+    W[webhook] --> P[parse_alert]
+    A[ask] --> Q[ask_agent]
+    T[trigger-test] --> G
 
     P --> G[get_groq]
     Q --> G
