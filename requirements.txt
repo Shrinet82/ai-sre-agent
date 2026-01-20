@@ -5,10 +5,15 @@ requests>=2.31.0
 
 # AI Integration
 groq>=0.4.0
-google-generativeai>=0.3.0
+google-generativeai
+prometheus-client>=0.3.0
 
 # Kubernetes
 kubernetes>=28.1.0
+
+# Slack ChatOps
+slack_bolt>=1.18.0
+slack_sdk>=3.27.0
 
 # Database & Vector Search
 qdrant-client>=1.7.0

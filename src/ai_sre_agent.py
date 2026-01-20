@@ -321,16 +321,34 @@ def verify_deployment_health(namespace, deployment, timeout=30):
 # EMAIL NOTIFICATION
 # =============================================================================
 def send_email(subject, message):
-    """Send email notification."""
+    """Send notification via Slack (preferred) or Email."""
     import smtplib
+    import requests
+    import json
     from email.message import EmailMessage
     
+    slack_webhook = os.environ.get('SLACK_WEBHOOK_URL')
+    if slack_webhook:
+        try:
+            payload = {
+                "text": f"🚨 *AI SRE Alert: {subject}*\n{message}"
+            }
+            response = requests.post(slack_webhook, json=payload, timeout=5)
+            if response.status_code == 200:
+                print(f"✅ Slack notification sent: {subject}")
+                return True, "Slack notification sent"
+            else:
+                print(f"⚠️ Slack failed: {response.text}")
+        except Exception as e:
+            print(f"⚠️ Slack error: {e}")
+
+    # Fallback to Gmail
     gmail_user = os.environ.get('GMAIL_USER')
     gmail_password = os.environ.get('GMAIL_APP_PASSWORD')
     
     if not gmail_user or not gmail_password:
         print(f"📧 [SIMULATED] {subject}: {message[:100]}...")
-        return True, "Email simulated (no credentials)"
+        return True, "Notification simulated (no credentials)"
     
     try:
         msg = EmailMessage()
@@ -339,6 +357,7 @@ def send_email(subject, message):
         msg['From'] = gmail_user
         msg['To'] = gmail_user
         
+        # Try port 465 (SSL)
         with smtplib.SMTP_SSL('smtp.gmail.com', 465) as smtp:
             smtp.login(gmail_user, gmail_password)
             smtp.send_message(msg)
@@ -346,7 +365,7 @@ def send_email(subject, message):
         print(f"📧 Email sent: {subject}")
         return True, "Email sent"
     except Exception as e:
-        return False, f"Email failed: {e}"
+        return False, f"Notification failed: {e}"
 
 # =============================================================================
 # AI DECISION ENGINE WITH SAFETY
@@ -1141,8 +1160,109 @@ def add_cors_headers(response):
 # =============================================================================
 # MAIN
 # =============================================================================
+# =============================================================================
+# SLACK CHATOPS INTEGRATION
+# =============================================================================
+
+SYSTEM_PROMPT = """You are an AI SRE Agent for INVESTIGATION ONLY. You can answer questions but CANNOT take actions.
+
+RULES:
+1. You can ONLY query information - no delete, restart, or scale
+2. Use get_namespace_pods to list pods in a specific namespace
+3. Use get_cluster_summary for full cluster overview
+4. Use get_recent_incidents to show past alerts and actions
+5. Be helpful and conversational
+
+INVESTIGATION TOOLS:
+- get_namespace_pods: List pods in a specific namespace
+- get_cluster_summary: Full cluster overview
+- get_recent_incidents: Show past incidents and actions"""
+
+def run_slack_bot():
+    """Run Slack Socket Mode listener in a background thread."""
+    if not os.environ.get("SLACK_APP_TOKEN") or not os.environ.get("SLACK_BOT_TOKEN"):
+        print("⚠️ Slack tokens not found. ChatOps disabled.")
+        return
+
+    try:
+        from slack_bolt import App
+        from slack_bolt.adapter.socket_mode import SocketModeHandler
+        
+        slack_app = App(token=os.environ["SLACK_BOT_TOKEN"])
+        
+        @slack_app.event("app_mention")
+        def handle_mentions(body, say):
+            text = body["event"]["text"]
+            user = body["event"]["user"]
+            thread_ts = body["event"].get("thread_ts", body["event"]["ts"])
+            
+            # Clean text (remove @bot mention)
+            question = text.split(">", 1)[1].strip() if ">" in text else text
+            
+            print(f"💬 Slack Question from {user}: {question}")
+            
+            # Reuse logic (Simplified for Slack) - acting as a proxy to Groq
+            try:
+                # 1. Get History
+                session_id = f"slack-{user}"
+                history = conversation_history.get(session_id, [])
+                
+                # 2. Build Prompt
+                messages = [
+                    {"role": "system", "content": SYSTEM_PROMPT}
+                ]
+                messages.extend(history[-6:]) # Last 6
+                messages.append({"role": "user", "content": question})
+                
+                # 3. Call AI
+                response = groq_client.chat.completions.create(
+                    model="llama-3.3-70b-versatile",
+                    messages=messages,
+                    tools=CHAT_TOOLS,
+                    tool_choice="auto",
+                    max_tokens=300
+                )
+                
+                ai_msg = response.choices[0].message
+                answer = ai_msg.content or ""
+                
+                # 4. Handle Tools
+                if ai_msg.tool_calls:
+                    say(f"⚡ _Processing {len(ai_msg.tool_calls)} actions..._", thread_ts=thread_ts)
+                    for tool_call in ai_msg.tool_calls:
+                        func_name = tool_call.function.name
+                        func_args = json.loads(tool_call.function.arguments)
+                        
+                        result = execute_chat_action(func_name, func_args)
+                        answer += f"\n\n*Action {func_name}*: {result}"
+                
+                # 5. Reply
+                say(f"🤖 {answer}", thread_ts=thread_ts)
+                
+                # 6. Save History
+                history.append({"role": "user", "content": question})
+                history.append({"role": "assistant", "content": answer})
+                conversation_history[session_id] = history[-20:]
+                
+            except Exception as e:
+                say(f"❌ Error processing request: {str(e)}", thread_ts=thread_ts)
+
+        print("🟢 Starting Slack Socket Mode...")
+        handler = SocketModeHandler(slack_app, os.environ["SLACK_APP_TOKEN"])
+        handler.start()
+        
+    except ImportError:
+        print("⚠️ Slack libraries not installed.")
+    except Exception as e:
+        print(f"❌ Slack Helper Error: {e}")
+
 if __name__ == '__main__':
     init_db()
+    
+    # Start Slack Thread
+    import threading
+    threading.Thread(target=run_slack_bot, daemon=True).start()
+    
     print("\n" + "="*60)
     print("🚀 AI SRE Agent v3 - Production Ready with Safety")
     print("="*60)

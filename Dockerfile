@@ -7,7 +7,9 @@ COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt flask groq
 
 # Copy application
+# Copy application
 COPY src/ai_sre_agent.py .
+COPY static/ static/
 
 # Create non-root user
 RUN useradd -m -u 1000 agent && chown -R agent:agent /app

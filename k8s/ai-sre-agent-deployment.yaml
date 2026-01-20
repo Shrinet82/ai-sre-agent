@@ -24,6 +24,9 @@ stringData:
   GROQ_API_KEY: "${GROQ_API_KEY}"
   GMAIL_USER: "${GMAIL_USER}"
   GMAIL_APP_PASSWORD: "${GMAIL_APP_PASSWORD}"
+  SLACK_WEBHOOK_URL: "${SLACK_WEBHOOK_URL}"
+  SLACK_APP_TOKEN: "${SLACK_APP_TOKEN}"
+  SLACK_BOT_TOKEN: "${SLACK_BOT_TOKEN}"
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -45,7 +48,7 @@ spec:
       serviceAccountName: ai-sre-agent
       containers:
         - name: agent
-          image: ai-sre-agent:latest
+          image: ttl.sh/ai-sre-agent-shrinet82:9h
           imagePullPolicy: IfNotPresent
           ports:
             - containerPort: 5000
